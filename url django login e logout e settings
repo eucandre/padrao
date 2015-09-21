@@ -1,0 +1,10 @@
+#--------------------------------url--------------------------
+
+url(r'^login/$','django.contrib.auth.views.login',{'template_name':'login.html'}),
+url(r'^logout/$','django.contrib.auth.views.logout_then_login',{'login_url':'/login/'}),
+
+#-----------------setings--------------------------
+ROOT_URLCONF = 'banco_curriculuns.urls'
+LOGIN_URL = "/login/"
+LOGOUT_URL ="/logout/"
+LOGIN_REDIRECT_URL ="/"
