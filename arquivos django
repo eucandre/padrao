@@ -1,0 +1,220 @@
+models.py
+
+
+UF =((u'Acre','Ac'),(u'Alagoas','Al'),(u'Amapa','Ap'),(u'Amazonas','Am'),(u'Bahia','Ba'),
+(u'Ceara','Ce'),(u'Distrito Federal','Df'),(u'Espirito Santo','Es'),(u'Goias','Go'),
+(u'Maranhao','Ma'),(u'Mato Grosso','Mt'),(u'Mato Grosso do Sul','Ma'),(u'Minas Gerais','Mg'),
+(u'Para','Pa'),(u'Paraiba','Pb'),(u'Parana','Pr'),(u'Pernambuco','Pe'),(u'Piaui','Pi'),
+(u'Rio de janeiro','Rj'),(u'Rio Grande do Sul','RS'),(u'Rio Grande do Norte','RN'),
+(u'Rondonia','Ro'),(u'Roraima','Rr'),(u'Santa Catarina','Sc'),(u'Sao paulo','Sp'),
+(u'Sergipe','Se'),(u'Tocantins','To'),)
+
+CARGO=((u'Peao','Peao'),(u'Capataz','Capataz'),(u'Gerente','Gerente'),(u'Tratorista','Tratorista'),(u'Outros','Outros'))
+
+
+class Endedereco(models.Model):
+    '''
+        classe terminada, sem metodos
+    '''
+
+    Municipio = models.CharField(max_length=250)
+    Uf_Municipio = models.CharField(choices=UF, max_length=30)
+    Rua=models.CharField(max_length=150)
+    numero = models.IntegerField()
+    CEP = models.CharField(max_length=150)
+    Telefone = models.CharField(max_length=150)
+    email = models.EmailField()
+    usuario = models.ForeignKey(User)
+
+
+    def __unicode__(self):
+        return self.Municipio
+
+    class Meta:
+        verbose_name_plural = 'Endereco e contato'
+
+
+class Alimentos(models.Model):
+    alimento = models.CharField(max_length=300)
+    pms_do_alimento_ha = models.FloatField()
+    usuario = models.ForeignKey(User)
+
+
+    def __unicode__(self):
+        return self.alimento
+
+    class Meta:
+        verbose_name_plural = 'Alimentos'
+
+class Cadastro_Fazenda(models.Model):
+    '''
+        classe terminada
+    '''
+    Nome = models.CharField(max_length=250)
+    Proprietario = models.CharField(max_length=250)
+    endereco = models.ForeignKey(Endedereco)
+    usuario = models.ForeignKey(User)
+    def __unicode__(self):
+        return self.Nome
+
+    class Meta:
+        verbose_name_plural = 'Cadastro Fazenda'
+
+class Funcionario(models.Model):
+
+    Nome = models.CharField(max_length=250)
+    Cargo = models.CharField(choices=CARGO,max_length=250)
+    salario = models.FloatField()
+    fazenda = models.ForeignKey(Cadastro_Fazenda)
+    #usuario = models.ForeignKey(User)
+    ano = models.DateField()
+    usuario = models.ForeignKey(User)
+
+    def __unicode__(self):
+        return self.Nome
+        
+        
+        
+        
+        
+Views.py        
+from django.contrib.auth.decorators import login_required
+from django.http import Http404
+
+from django.shortcuts import render_to_response, get_object_or_404
+from django.template import RequestContext
+from metodos_definicao_rebanho_inicial import *
+from models import *
+from forms import *
+from django.contrib.auth.models import User
+
+class sistema_boi:
+    t_enderecos = len(Endedereco.objects.all())
+    #t_confinamento_curral_aberto = len(Confinamento_Curral_aberto.objects.all())
+
+    def __init__(self):
+        self.conta_endereco = Endedereco.objects.get(self.t_enderecos)
+        self.objeto_confinamento_curral_aberto = Confinamento_Curral_aberto.objects.get(self.t_confinamento_curral_aberto)
+
+@login_required
+def Inicio(request):
+    return render_to_response('index.html')
+
+@login_required
+def endereco(request):
+    if request.method == 'POST':
+        form = FormEndereco(request.POST,request.FILES)
+        if form.is_valid():
+            item = form.save(commit=False)
+            #dados = form.cleaned_data
+            #itens = Endedereco(Municipio = dados['Municipio'], Uf_Municipio = dados['Uf_Municipio'], Rua = dados['Rua'], numero = dados['numero'], CEP = dados['CEP'], Telefone = dados['Telefone'], email= dados['email'])
+            item.usuario = request.user
+            item.save()
+            iteme = Endedereco.objects.get(pk=(len(Endedereco.objects.filter(request.user))))
+            return render_to_response('itens_enderecos.html',{'iteme':iteme})
+    else:
+            form = FormEndereco()
+
+    return render_to_response("endereco.html", {'form':form}, context_instance = RequestContext(request))
+
+@login_required
+def alimentos(request):
+    if request.method =='POST':
+        form = FormAlimento(request.POST,request.FILES)
+        if form.is_valid():
+            dados = form.cleaned_data
+            itens = Alimentos(alimento = dados['alimento'],pms_do_alimento_ha=dados['pms_do_alimento_ha'])
+            itens.save()
+            itenali = Alimentos.objects.get(pk=len(Alimentos.objects.all()))
+            return render_to_response('itens_alimento.html', {'itenali':itenali})
+    else:
+        form = FormAlimento()
+    return render_to_response('alimentos.html', {'form':form}, context_instance = RequestContext(request))
+
+
+
+@login_required
+def fazenda(request):
+    if request.method == 'POST':
+
+        form = FormCadastroFazenda(request.POST, request.FILES)
+        if form.is_valid():
+
+            #item = Cadastro_Fazenda.objects.all()
+            dados = form.cleaned_data
+            itens = Cadastro_Fazenda(Nome=dados['Nome'], Proprietario=dados['Proprietario'], endereco=dados['endereco'])
+            itens.save()
+
+            itemf = Cadastro_Fazenda.objects.get(pk = len(Cadastro_Fazenda.objects.all()))
+
+
+            return render_to_response('itens_fazenda.html',{'itemf':itemf})#{'item':item})
+    else:
+        form = FormCadastroFazenda()
+    return render_to_response('cadastro_fazenda.html', {'form':form}, context_instance = RequestContext(request))
+
+@login_required
+def funcionario(request):
+    if request.method == 'POST':
+        form = FormFuncionario(request.POST, request.FILES)
+        if form.is_valid():
+
+            dados = form.cleaned_data
+            itens = Funcionario(Nome = dados['Nome'],ano = dados['ano'],Cargo=dados['Cargo'],salario=dados['salario'],fazenda = dados['fazenda'])
+            itens.save()
+
+
+            itemfun = Funcionario.objects.get(pk=(len(Funcionario.objects.all())))
+            return render_to_response('itens_funcionarios.html', {'itemfun':itemfun})
+    else:
+        form = FormFuncionario()
+    return render_to_response('funcionario.html', {'form':form}, context_instance  = RequestContext(request))
+
+
+forms.py
+
+from django import forms
+from django.template.defaulttags import widthratio
+from models import *
+from metodos_definicao_rebanho_inicial import *
+from django.contrib.auth.forms import UserCreationForm
+from metodos_definicao_rebanho_inicial import *
+
+UF = ((u'Acre','Ac'),(u'Alagoas','Al'),(u'Amapa','Ap'),(u'Amazonas','Am'),(u'Bahia','Ba'),
+(u'Ceara','Ce'),(u'Distrito Federal','Df'),(u'Espirito Santo','Es'),(u'Goias','Go'),
+(u'Maranhao','Ma'),(u'Mato Grosso','Mt'),(u'Mato Grosso do Sul','Ma'),(u'Minas Gerais','Mg'),
+(u'Para','Pa'),(u'Paraiba','Pb'),(u'Parana','Pr'),(u'Pernambuco','Pe'),(u'Piaui','Pi'),
+(u'Rio de janeiro','Rj'),(u'Rio Grande do Sul','RS'),(u'Rio Grande do Norte','RN'),
+(u'Rondonia','Ro'),(u'Roraima','Rr'),(u'Santa Catarina','Sc'),(u'Sao paulo','Sp'),
+(u'Sergipe','Se'),(u'Tocantins','To'),)
+
+
+#class FormCriaUsuario(UserCreationForm):
+#    class Meta:
+#        model =
+
+
+class FormEndereco(forms.ModelForm):
+
+    class Meta:
+        model = Endedereco
+        fields = ['Municipio', 'Uf_Municipio', 'Rua', 'numero','CEP', 'Telefone', 'email']
+
+class FormAlimento(forms.Form):
+    alimento = forms.CharField(label='',widget=forms.TextInput(attrs={"class":"form-field", "placeholder":"alimento"}))
+    pms_do_alimento_ha = forms.FloatField(label='',widget=forms.TextInput(attrs={"class":"form-field", "placeholder":"pms por ha para o alimento"}))
+
+
+
+class FormCadastroFazenda(forms.Form):#ModelForm):
+    Nome = forms.CharField(label='',widget=forms.TextInput(attrs={"class":"form-field", "placeholder":"Nome da fazenda"}))
+    Proprietario = forms.CharField(label='',widget=forms.TextInput(attrs={"class":"form-field","placeholder":"Proprietario"}))
+    endereco = forms.ModelChoiceField(queryset=Endedereco.objects.all(),label='',widget=forms.Select(attrs={"class":"form-field","placeholder":"Endereco" }))
+
+class FormFuncionario(forms.Form):
+    Nome=forms.CharField(label='',widget=forms.TextInput(attrs={"class":"form-field", "placeholder":"Nome"}))
+    ano=forms.DateField(label='',widget=forms.DateInput(attrs={"class":"form-field", "placeholder":"Data"}))
+
+    Cargo=forms.ChoiceField(choices=CARGO,label='',widget=forms.Select(attrs={"class":"form-field", "placeholder":"Cargo"}))
+    salario=forms.FloatField(label='', widget=forms.TextInput(attrs={"class":"form-field", "placeholder":"Salario"}))
+    fazenda=forms.ModelChoiceField(queryset = Cadastro_Fazenda.objects.all(),label='',widget=forms.Select(attrs={"class":"form-field", "placeholder":"fazenda"}))
